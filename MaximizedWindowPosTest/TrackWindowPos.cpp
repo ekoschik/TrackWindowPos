@@ -5,41 +5,19 @@
 #include "header.h"
 #include <map>
 
-using namespace std;
-
-map<HWND, CWindow*> WindowMap;
-
-void InitLogMask()
-{
-    SetLogBit(ERR, true);
-    //SetLogBit(MOUSE_BUTTON, true);
-
-    //SetLogBit(MONITOR_CHANGE, true);
-    //SetLogBit(DPI, true);
-    
-    //SetLogBit(WINDOW_POS_CHANGE, true);
-    //SetLogBit(POS_CHANGING, true);
-    SetLogBit(POS_CHANGED, true);
-    //SetLogBit(GET_MINMAXINFO, true);
-    //SetLogBit(CREATE, true);
-}
-
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    static std::map<HWND, CWindow*> WindowMap;
     if (message == WM_CREATE)
     {
         WindowMap[hwnd] = new CWindow(hwnd);
     }
 
     CWindow* pwnd = WindowMap[hwnd];
-
     if (pwnd == nullptr)
     {
-        // Pass everything before WM_CREATE straight to DefWndProc
         return DefWindowProc(hwnd, message, wParam, lParam);
     }
-
-    pwnd->SetCurrentMessage(message);
 
     switch (message)
     {
@@ -67,14 +45,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         pwnd->HandlePosChanged((WINDOWPOS*)lParam);
         break;
 
-    case WM_NCPAINT:
-        pwnd->HandleNCPaint();
-        break;
-
     case WM_LBUTTONDOWN:
     case WM_LBUTTONUP:
-        // clicks create spaces in message spew
-        Log(MOUSE_BUTTON, "\n%s\n\n", (message == WM_LBUTTONDOWN) ? "WM_LBUTTONDOWN" : "WM_LBUTTONUP");
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONUP:
+        pwnd->HandleButton(
+            ((message == WM_LBUTTONDOWN) || (message == WM_LBUTTONUP)),
+            ((message == WM_LBUTTONDOWN) || (message == WM_RBUTTONDOWN)));
         break;
 
     case WM_PAINT:
@@ -90,19 +67,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     }
-
-    pwnd->CheckWindowState();
-
+    
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
 int main()
 {
-    HackSetThreadToPMV2();
-    InitLogMask();
+    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-    LPCWSTR szClass = L"MaxWindowPosTestClass";
-    LPCWSTR szTitle = L"MaxWindowPosTestTitle";
+    SetLogBit(ERR, true);
+    SetLogBit(VERBOSE, true);
+    SetLogBit(POS_CHANGING, true);
+    SetLogBit(POS_CHANGED, true);
+    SetLogBit(GET_MINMAXINFO, true);
+    SetLogBit(DPI, true);
+
+    LPCWSTR szClass = L"TrackWindowPos-MainWindow";
+    LPCWSTR szTitle = L"TrackWindowPos";
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
     WNDCLASSEXW wcex = {};
@@ -130,8 +111,8 @@ int main()
 
     if (!hwnd)
     {
-        Log(ERR, "RegisterWindow failed, bailing...\n");
-        return NULL;
+        Log(ERR, "CreateWindow failed, bailing...\n");
+        return 1;
     }
 
     MSG msg;

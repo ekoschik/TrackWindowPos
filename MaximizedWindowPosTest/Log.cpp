@@ -13,22 +13,17 @@ void SetLogBit(LOG_TYPE lg, bool bSet)
 void Log(LOG_TYPE type, CHAR* format, ...)
 {
     if (LOG_TYPE_MASK[type]) {
-        //if (type == ERR) {
-        //    // can i do red text for error? ...OutputDebugStringA(buffer);
-        //    printf("ERROR: ");
-        //}
-
         static CHAR buffer[1000];
         va_list argptr;
         va_start(argptr, format);
         vsprintf_s(buffer, format, argptr);
         va_end(argptr);
-
         printf((const char *)&buffer);        
     }
 }
 
 struct WINDOWPOSFLAG { UINT f; char* name; };
+const int cWINDOWPOSFLAGS = 13;
 
 WINDOWPOSFLAG WPFLAGS[cWINDOWPOSFLAGS] = {
     { SWP_DRAWFRAME , "SWP_DRAWFRAME" },
@@ -60,16 +55,6 @@ bool IsWindowFlagPresent(UINT flags, int i, char* & pstrFlagName)
 void LogWINDOWPOS(LOG_TYPE logtype, WINDOWPOS* pwp)
 {
     Log(logtype, " - WINDOWPOS:\n");
-
-    if (pwp->hwnd != nullptr)
-    {
-        Log(logtype, "    - hwnd: 0x%X\n", pwp->hwnd);
-    }
-
-    if (pwp->hwndInsertAfter != nullptr)
-    {
-        Log(logtype, "    - hwndInsertAfter: 0x%X\n", pwp->hwndInsertAfter);
-    }
 
     if (!(pwp->flags & SWP_NOMOVE))
     {
